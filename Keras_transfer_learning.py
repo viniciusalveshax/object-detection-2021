@@ -9,10 +9,7 @@
 
 # In[ ]:
 
-
-# import the necessary packages
 import os
-# import the necessary packages
 from bs4 import BeautifulSoup
 from imutils import paths
 import cv2
@@ -39,13 +36,11 @@ import numpy as np
 import argparse
 import pickle
 import os
+from datetime import datetime
 
 
 # In[ ]:
 
-
-from google.colab import drive
-drive.mount('/content/drive')
 
 
 # # Define variáveis do ambiente
@@ -62,14 +57,8 @@ NMS_THRESHOLD = 0.15
 #Número de classes
 NRCLASSES = 15
 
-#Nome da pasta
-DATA_PATH="objetos-mesa"
-
 #Dimensões da imagem que deve ser passada para a rede
 INPUT_DIMS = (224, 224)
-# define the path to the output model and label binarizer
-MODEL_PATH = "object_detector.h5"
-ENCODER_PATH = "label_encoder.pickle"
 # define the minimum probability required for a positive prediction
 # (used to filter out false-positive predictions)
 MIN_PROBA = 0.99
@@ -82,15 +71,24 @@ BS = 16
 
 MAX_PROPOSALS_INFER = 20
 
+#Nome da pasta
+DATA_PATH="objetos-mesa"
+COLLAB=False
+DEBUG=True
+
+# Prefixo do arquivo do modelo
+PREFIX = "object_detector.h5"
+PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
 
 # # Monta o google drive
 
 # In[ ]:
 
-
-#Mount gdrive
-from google.colab import drive
-drive.mount("/content/gdrive", force_remount=True)
+# Se está usando o collab então monta o drive
+if COLLAB:
+	#Mount gdrive
+	from google.colab import drive
+	drive.mount("/content/gdrive", force_remount=True)
 
 
 # In[ ]:
@@ -98,16 +96,6 @@ drive.mount("/content/gdrive", force_remount=True)
 
 get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
 
-
-# In[ ]:
-
-
-get_ipython().system('ls')
-
-
-# # Carrega as imagens
-
-# In[ ]:
 
 
 #Inicializa os vetores que vão ser usados no treinamento
@@ -189,32 +177,15 @@ for linha in f:
 
 # In[ ]:
 
+if DEBUG:
+	print(labels[0])
+	data[0].shape
+	plt.imshow(data[0])
+	for i in range(1,8):
+	  #print(i)
+	  print(labels[i])
+	  plt.imshow(data[i])
 
-print(labels[0])
-
-
-# In[ ]:
-
-
-data[0].shape
-
-
-# In[ ]:
-
-
-plt.imshow(data[0])
-
-
-# In[ ]:
-
-
-for i in range(1,8):
-  #print(i)
-  print(labels[i])
-  plt.imshow(data[i])
-
-
-# In[ ]:
 
 
 # convert the data and labels to NumPy arrays
@@ -225,26 +196,12 @@ labels_np.shape
 # perform one-hot encoding on the labels
 lb = LabelBinarizer()
 labels_b = lb.fit_transform(labels_np)
-#Descomente a linha abaixo se o seu modelo só tem dois tipos de saída
-#labels_b = to_categorical(labels_b)
 
-
-# In[ ]:
-
-
-data_np.shape
-
-
-# In[ ]:
-
-
-labels_b.shape
-
+if DEBUG:
+	data_np.shape
+	labels_b.shape
 
 # # Prepara o modelo
-
-# In[ ]:
-
 
 
 # partition the data into training and testing splits using 75% of
@@ -289,10 +246,6 @@ for layer in baseModel.layers:
 
 # # Treina o modelo
 
-# In[ ]:
-
-
-
 #usar variavel de cima
 EPOCHS=100
 # compile our model
@@ -312,9 +265,6 @@ H = model.fit(
 
 # # Mostra as informações do treinamento
 
-# In[ ]:
-
-
 # make predictions on the testing set
 print("[INFO] evaluating network...")
 predIdxs = model.predict(testX, batch_size=BS)
@@ -324,9 +274,6 @@ predIdxs = np.argmax(predIdxs, axis=1)
 # show a nicely formatted classification report
 print(classification_report(testY.argmax(axis=1), predIdxs,
 	target_names=lb.classes_))
-
-
-# In[ ]:
 
 
 # plot the training loss and accuracy
@@ -352,10 +299,10 @@ plt.savefig('saida')
 
 # serialize the model to disk
 print("[INFO] saving mask detector model...")
-model.save("modelo", save_format="h5")
+model.save(PREFIX+"modelo", save_format="h5")
 # serialize the label encoder to disk
 print("[INFO] saving label encoder...")
-f = open("encoder", "wb")
+f = open(PREFIX+"encoder", "wb")
 f.write(pickle.dumps(lb))
 f.close()
 
