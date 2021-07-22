@@ -2,12 +2,8 @@
 # coding: utf-8
 
 # Baseado em https://www.pyimagesearch.com/2020/07/13/r-cnn-object-detection-with-keras-tensorflow-and-deep-learning/
-# 
-# 
 
 # # Importa os pré-requisitos
-
-# In[ ]:
 
 import os
 from bs4 import BeautifulSoup
@@ -39,14 +35,7 @@ import os
 from datetime import datetime
 
 
-# In[ ]:
-
-
-
 # # Define variáveis do ambiente
-
-# In[ ]:
-
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
 THRESHOLD = 0.9
