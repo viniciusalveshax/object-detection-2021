@@ -8,6 +8,7 @@
 import os
 from bs4 import BeautifulSoup
 from imutils import paths
+
 import cv2
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import MobileNetV2
@@ -27,6 +28,7 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from skimage.transform import resize
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -55,13 +57,12 @@ MIN_PROBA = 0.99
 #Variáveis para o treimanento
 #Learning rate, qtdade de épocas e batch size
 INIT_LR = 1e-4
-EPOCHS = 100
+EPOCHS = 10
 BS = 16
 
 MAX_PROPOSALS_INFER = 20
 
 #Nome da pasta
-DATA_PATH="objetos-mesa"
 COLLAB=False
 DEBUG=True
 
@@ -69,22 +70,15 @@ DEBUG=True
 PREFIX = "object_detector.h5"
 PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
 
-# # Monta o google drive
-
-# In[ ]:
-
 # Se está usando o collab então monta o drive
 if COLLAB:
 	#Mount gdrive
 	from google.colab import drive
 	drive.mount("/content/gdrive", force_remount=True)
-
-
-# In[ ]:
-
-
-get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
-
+	DATA_PATH="objetos-mesa"
+	get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
+else:
+	DATA_PATH="training-data/objetos-mesa"
 
 
 #Inicializa os vetores que vão ser usados no treinamento
@@ -92,12 +86,17 @@ data = []
 labels = []
 image_count = 0
 
+print("Carregando imagens")
+
 #Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
 f = open(DATA_PATH + os.path.sep + 'index.txt')
 for linha in f:
   #Tira o \n no final de cada linha
-	linha = linha[:-1]  
-	print("[INFO] processing image ", linha)
+	linha = linha[:-1] 
+	
+	if DEBUG: 
+		print("[INFO] processing image ", linha)
+
 	# extract the filename from the file path and use it to derive
 	# the path to the XML annotation file
 
@@ -163,8 +162,12 @@ for linha in f:
 		data.append(obj_resized)
 		labels.append(label)
 
+#quit()
+
 
 # In[ ]:
+
+matplotlib.use('GTK3Agg')
 
 if DEBUG:
 	print(labels[0])
@@ -175,7 +178,7 @@ if DEBUG:
 	  print(labels[i])
 	  plt.imshow(data[i])
 
-
+print("Convertendo imagens para NumPy")
 
 # convert the data and labels to NumPy arrays
 data_np = np.array(data, dtype="float32")
@@ -186,12 +189,15 @@ labels_np.shape
 lb = LabelBinarizer()
 labels_b = lb.fit_transform(labels_np)
 
+
+
 if DEBUG:
 	data_np.shape
 	labels_b.shape
 
 # # Prepara o modelo
 
+print("Preparando os dados de treinamento")
 
 # partition the data into training and testing splits using 75% of
 # the data for training and the remaining 25% for testing
@@ -210,6 +216,7 @@ aug = ImageDataGenerator(
 
 # In[ ]:
 
+print("Criando modelo")
 
 # load the MobileNetV2 network, ensuring the head FC layer sets are
 # left off
@@ -234,9 +241,10 @@ for layer in baseModel.layers:
 
 
 # # Treina o modelo
+print("Treinando o modelo")
 
 #usar variavel de cima
-EPOCHS=100
+#EPOCHS=100
 # compile our model
 print("[INFO] compiling model...")
 opt = Adam(lr=INIT_LR)
