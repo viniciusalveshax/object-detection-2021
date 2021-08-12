@@ -39,7 +39,6 @@ import os
 from datetime import datetime
 
 
-
 #Dado um vetor de probabilidades e os rótulos disponíveis retorna dois valores:
 # a maior probabilidade e o respectivo rótulo
 def max_prob_label(proba, labels):
@@ -156,8 +155,8 @@ def avaliacao(model, lb, filename):
 	#Para o primeira imagem (posição 0) do vetor de entrada mostra
 	#as probabilidades caso elas sejam maiores do que o limite.
 	for prob_i, label_i in zip(proba[0], lb.classes_):
-	  if (prob_i > THRESHOLD):
-		print(label_i, " ", prob_i)
+		if (prob_i > THRESHOLD):
+			print(label_i, " ", prob_i)
 
 
 	# Até aqui ele está tentando usar a imagem inteira como se tivesse um único objeto. Aparentemente ele dá o resultado referente ao maior objeto da imagem.
