@@ -123,7 +123,7 @@ def IOU(boxA, boxB):
 
 
 def avaliacao(model, lb, filename):
-	test_img = load_img('/content/objetos-mesa/'+test_filename+'.jpg', target_size=INPUT_DIMS)
+	test_img = load_img(DATA_INPUT_PATH + os.path.sep + test_filename + '.jpg', target_size=INPUT_DIMS)
 
 	# Gera um vetor de entradas no qual será realizada a predição
 	test_img = img_to_array(test_img)
@@ -139,17 +139,8 @@ def avaliacao(model, lb, filename):
 	# Salva as probabilidades para essa entrada em proba
 	proba = model.predict(input_test_np)
 
-
-	# In[ ]:
-
-
-	proba
-
-
-	# In[ ]:
-
-
-	lb.classes_
+	#proba
+	#lb.classes_
 
 
 	#Para o primeira imagem (posição 0) do vetor de entrada mostra
@@ -177,60 +168,29 @@ def avaliacao(model, lb, filename):
 
 	# In[ ]:
 
-
-	data_np = np.array(data, dtype="float32")
-	data_np.shape
-
-
-	# In[ ]:
-
-
-
-
-
-	# In[ ]:
-
-
-	prob_test = model.predict(data_np)
-
-	if DEBUG:
-		# In[ ]:
-
-
+	# Era Debug mas troquei por false só pra testar se funcionava sem essa parte do código
+	if False:
+		data_np = np.array(data, dtype="float32")
+		data_np.shape
+		prob_test = model.predict(data_np)
 		i = 4
-
-
-		# In[ ]:
-
-
 		plt.imshow(data[i])
-
-
-		# In[ ]:
-
-
 		lb.classes_
-
-
-		# In[ ]:
-
-
 		prob_test[i]
-
-
-		# In[ ]:
-
-
 		max_prob_label(prob_test[i], lb.classes_)
 
-
 	# # Seletive search
-
-	# O objetivo do algoritmo de SeletiveSearch é tentar detectar elementos de uma imagem que pode ser que sejam objetos, para isso ele usar mudanças de gradiante, variações de cores, etc. Isso é interessante pois é mais eficiente do que percorrer a imagem e tentar detectar objetos em toda a imagem (algoritmo de janela deslizante). Ao final então ele gera um conjunto de retângulos que possivelmente englobam objetos.
+	# O objetivo do algoritmo de SeletiveSearch é tentar detectar elementos
+	# de uma imagem que pode ser que sejam objetos, para isso ele usar mudanças de gradiante,
+	# variações de cores, etc.
+	# Isso é interessante pois é mais eficiente do que percorrer
+	# a imagem e tentar detectar objetos em toda a imagem (algoritmo de janela deslizante).
+	# Ao final então ele gera um conjunto de retângulos que possivelmente englobam objetos.
 
 	# In[ ]:
 
 
+	image = test_img
 	ss = cv2.ximgproc.segmentation.createSelectiveSearchSegmentation()
 	ss.setBaseImage(image)
 	ss.switchToSelectiveSearchFast()
@@ -304,7 +264,8 @@ def avaliacao(model, lb, filename):
 		[tmp_prob, tmp_label] = max_prob_label(proba[i], lb.classes_)
 		[tmp_prob, tmp_label]
 
-		proba
+		print("Prob a")
+		print(proba)
 
 
 	# In[ ]:
@@ -318,7 +279,8 @@ def avaliacao(model, lb, filename):
 	  labels.append(tmp_label)
 
 	if DEBUG:
-		scores
+		print("Scores")
+		print(scores)
 
 	if COLLAB:
 		from google.colab.patches import cv2_imshow
@@ -339,8 +301,9 @@ def avaliacao(model, lb, filename):
 		#text="teste"
 		[tmp_prob, tmp_label] = max_prob_label(prob, lb.classes_)
 		text = tmp_label
+		print("Prob: ", tmp_prob, ", Label: ", tmp_label)
 		#print(tmp_prob)
-		if (tmp_prob > 0.5 and area < 500):
+		if (tmp_prob > THRESHOLD and area < 500):
 		  print("index: ", i, ", prob: ", tmp_prob, ", label: ", tmp_label, ", area: ", area)
 		  cv2.rectangle(clone, (startX, startY), (endX, endY),
 			(0, 255, 0), 2)
@@ -350,7 +313,7 @@ def avaliacao(model, lb, filename):
 	#clone = preprocess_input(clone)
 
 
-	# show the output after *before* running NMS
+	# show the output before running NMS
 	#imshow(clone)
 	plt.imshow(clone)
 
@@ -358,7 +321,7 @@ def avaliacao(model, lb, filename):
 	selected_boxes, selected_scores, selected_labels = NMS(boxes, scores, labels, NMS_THRESHOLD)
 
 
-
+	print("Length selected_boxes")
 	print(len(selected_boxes))
 
 
@@ -375,6 +338,7 @@ def avaliacao(model, lb, filename):
 		(startX, startY, endX, endY) = tmp_box
 		if tmp_score < THRESHOLD:
 			continue
+		print("Mais um retângulo")
 		cv2.rectangle(clone2, (startX, startY), (endX, endY),
 			(0, 255, 0), 1)
 		y = startY - 10 if startY - 10 > 10 else startY + 10
@@ -396,16 +360,7 @@ def avaliacao(model, lb, filename):
 	plt.imshow(clone_resized)
 
 
-
-
-# In[ ]:
-
-
-
-# # Define variáveis do ambiente
-
-# In[ ]:
-
+#quit()
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
 THRESHOLD = 0.9
@@ -430,160 +385,142 @@ BS = 16
 
 MAX_PROPOSALS_INFER = 20
 
-#Nome da pasta
-DATA_PATH="objetos-mesa"
+# Prefixo do arquivo do modelo
+PREFIX = "object_detector.h52021-08-19"
+#PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
+
+#True para rodar no collab
 COLLAB=False
 DEBUG=True
 
-# Prefixo do arquivo do modelo
-PREFIX = "object_detector.h5"
-PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
-
-# # Monta o google drive
-
-# In[ ]:
+#quit()
 
 # Se está usando o collab então monta o drive
 if COLLAB:
 	#Mount gdrive
 	from google.colab import drive
 	drive.mount("/content/gdrive", force_remount=True)
+	get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
+else:
+	DATA_INPUT_PATH="input-data/objetos-mesa"
+	DATA_MODEL_PATH="model-data/"
 
+LOAD_ALL_IMAGE=False
 
-# In[ ]:
+if LOAD_ALL_IMAGE == True:
+	#Inicializa os vetores que vão ser usados no treinamento
+	data = []
+	labels = []
+	image_count = 0
 
+	#Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
+	f = open(DATA_INPUT_PATH + os.path.sep + 'index.txt')
+	for linha in f:
+	  #Tira o \n no final de cada linha
+		linha = linha[:-1]
+		print("[INFO] processing image ", linha)
+		# extract the filename from the file path and use it to derive
+		# the path to the XML annotation file
 
-get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
+	  #nome do arquivo da imagem
+		imgFilename = DATA_INPUT_PATH + os.path.sep + linha + '.jpg'
 
+	  # para fazer testes em um conjunto menor de imagens
+	  # descomente as linhas a seguir pois isso irá carregar
+	  # um conjunto menor de imagens (6 somente)
+		#image_count = image_count + 1
+		#if (image_count > 5):
+		#	break
 
+	  #nome do arquivo da anotação
+		annotFilename = DATA_INPUT_PATH + os.path.sep + linha + '.xml'
 
-#Inicializa os vetores que vão ser usados no treinamento
-data = []
-labels = []
-image_count = 0
+		# load the annotation file, build the soup, and initialize our
+		# list of ground-truth bounding boxes
+		contents = open(annotFilename).read()
+		soup = BeautifulSoup(contents, "html.parser")
 
-#Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
-f = open(DATA_PATH + os.path.sep + 'index.txt')
-for linha in f:
-  #Tira o \n no final de cada linha
-	linha = linha[:-1]  
-	print("[INFO] processing image ", linha)
-	# extract the filename from the file path and use it to derive
-	# the path to the XML annotation file
+		# extract the image dimensions
+		w = int(soup.find("width").string)
+		h = int(soup.find("height").string)
 
-  #nome do arquivo da imagem
-	imgFilename = DATA_PATH + os.path.sep + linha + '.jpg'
+		#continue
 
-  # para fazer testes em um conjunto menor de imagens 
-  # descomente as linhas a seguir pois isso irá carregar
-  # um conjunto menor de imagens (6 somente)
-	#image_count = image_count + 1
-	#if (image_count > 5):
-	#	break
+		# loop over all 'object' elements
+		for o in soup.find_all("object"):
+			# extract the label and bounding box coordinates
+			label = o.find("name").string
+			xMin = int(o.find("xmin").string)
+			yMin = int(o.find("ymin").string)
+			xMax = int(o.find("xmax").string)
+			yMax = int(o.find("ymax").string)
+			# truncate any bounding box coordinates that may fall
+			# outside the boundaries of the image
+			xMin = max(0, xMin)
+			yMin = max(0, yMin)
+			xMax = min(w, xMax)
+			yMax = min(h, yMax)
 
-  #nome do arquivo da anotação
-	annotFilename = DATA_PATH + os.path.sep + linha + '.xml'
-	
-	# load the annotation file, build the soup, and initialize our
-	# list of ground-truth bounding boxes
-	contents = open(annotFilename).read()
-	soup = BeautifulSoup(contents, "html.parser")
+		# load the input image (224x224) and preprocess it
+			image = load_img(imgFilename, target_size=INPUT_DIMS)
+			image = img_to_array(image)
+			image = preprocess_input(image) #
 
-	# extract the image dimensions
-	w = int(soup.find("width").string)
-	h = int(soup.find("height").string)
-	
-	#continue
+		# a imagem é lida em 224x224 então é preciso calcular as dimensões
+		# dos objetos anotados dentro dessa nova proporção de imagem
+			ratio_w0 = round(w / INPUT_DIMS[0])
+			ratio_h0 = round(h / INPUT_DIMS[1])
+			xMin0 = round(xMin / ratio_w0)
+			xMax0 = round(xMax / ratio_w0)
+			yMin0 = round(yMin / ratio_h0)
+			yMax0 = round(yMax / ratio_h0)
 
-	# loop over all 'object' elements
-	for o in soup.find_all("object"):
-		# extract the label and bounding box coordinates
-		label = o.find("name").string
-		xMin = int(o.find("xmin").string)
-		yMin = int(o.find("ymin").string)
-		xMax = int(o.find("xmax").string)
-		yMax = int(o.find("ymax").string)
-		# truncate any bounding box coordinates that may fall
-		# outside the boundaries of the image
-		xMin = max(0, xMin)
-		yMin = max(0, yMin)
-		xMax = min(w, xMax)
-		yMax = min(h, yMax)
-		
-  	# load the input image (224x224) and preprocess it
-		image = load_img(imgFilename, target_size=INPUT_DIMS)
-		image = img_to_array(image)
-		image = preprocess_input(image) # 
-  
-    # a imagem é lida em 224x224 então é preciso calcular as dimensões
-    # dos objetos anotados dentro dessa nova proporção de imagem
-		ratio_w0 = round(w / INPUT_DIMS[0])
-		ratio_h0 = round(h / INPUT_DIMS[1])
-		xMin0 = round(xMin / ratio_w0)
-		xMax0 = round(xMax / ratio_w0)
-		yMin0 = round(yMin / ratio_h0)
-		yMax0 = round(yMax / ratio_h0) 
+		# seleciona a parte da imagem onde o objeto anotado está
+			obj_image = image[yMin0:yMax0, xMin0:xMax0]
 
-    # seleciona a parte da imagem onde o objeto anotado está
-		obj_image = image[yMin0:yMax0, xMin0:xMax0]
+		# a entrada da rede espera uma imagem 224x224 então redimensiona o objeto
+			obj_resized = resize(obj_image, (INPUT_DIMS[0], INPUT_DIMS[1]))
 
-    # a entrada da rede espera uma imagem 224x224 então redimensiona o objeto
-		obj_resized = resize(obj_image, (INPUT_DIMS[0], INPUT_DIMS[1]))
-		
-		data.append(obj_resized)
-		labels.append(label)
+			data.append(obj_resized)
+			labels.append(label)
 
+	#quit()
 
-# In[ ]:
-
-if DEBUG:
-	print(labels[0])
-	data[0].shape
-	plt.imshow(data[0])
-	for i in range(1,8):
-	  #print(i)
-	  print(labels[i])
-	  plt.imshow(data[i])
+	if DEBUG:
+		print(labels[0])
+		data[0].shape
+		plt.imshow(data[0])
+		for i in range(1,8):
+		  #print(i)
+		  print(labels[i])
+		  plt.imshow(data[i])
 
 
 
-# convert the data and labels to NumPy arrays
-data_np = np.array(data, dtype="float32")
-data_np.shape
-labels_np = np.array(labels)
-labels_np.shape
-# perform one-hot encoding on the labels
-lb = LabelBinarizer()
-labels_b = lb.fit_transform(labels_np)
-
-if DEBUG:
+	# convert the data and labels to NumPy arrays
+	data_np = np.array(data, dtype="float32")
 	data_np.shape
-	labels_b.shape
+	labels_np = np.array(labels)
+	labels_np.shape
+	# perform one-hot encoding on the labels
+	lb = LabelBinarizer()
+	labels_b = lb.fit_transform(labels_np)
 
-# In[ ]:
+	#quit()
 
+	if DEBUG:
+		data_np.shape
+		labels_b.shape
 
-get_ipython().system('ls')
+	if COLLAB:
+		get_ipython().system('ls')
+		get_ipython().system('cp modelo objetos-mesa/modelo-27abr2021')
+		get_ipython().system('cp encoder objetos-mesa/encoder-27abr2021')
+		get_ipython().system('ls objetos-mesa/')
 
+#print(PREFIX+"modelo")
 
-# In[ ]:
-
-
-#TODO salvar o modelo com o nome do dia
-
-
-# In[ ]:
-
-
-get_ipython().system('cp modelo objetos-mesa/modelo-27abr2021')
-get_ipython().system('cp encoder objetos-mesa/encoder-27abr2021')
-
-
-# In[ ]:
-
-
-get_ipython().system('ls objetos-mesa/')
-
+#quit()
 
 # # Carrega o modelo
 # 
@@ -592,10 +529,10 @@ get_ipython().system('ls objetos-mesa/')
 
 # Execute a célula abaixo se quiser carregar um modelo antigo
 
-model = load_model(PREFIX+"modelo")
-lb = pickle.loads(open(PREFIX+"encoder", "rb").read())
+model = load_model(DATA_MODEL_PATH + os.path.sep + PREFIX + "modelo")
+lb = pickle.loads(open(DATA_MODEL_PATH + os.path.sep + PREFIX + "encoder", "rb").read())
 
-# In[ ]:
+#quit()
 
 if DEBUG:
 	print(type(lb))
