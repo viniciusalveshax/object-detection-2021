@@ -38,6 +38,9 @@ import pickle
 import os
 from datetime import datetime
 
+def show_image(image):
+	cv2.imshow('ImageWindow', image)
+	cv2.waitKey()
 
 #Dado um vetor de probabilidades e os rótulos disponíveis retorna dois valores:
 # a maior probabilidade e o respectivo rótulo
@@ -335,6 +338,7 @@ def avaliacao(model, lb, filename):
 		#print(tmp_box, tmp_score)
 		#continue
 		# draw the bounding box, label, and probability on the image
+		print("Print score", tmp_score)
 		(startX, startY, endX, endY) = tmp_box
 		if tmp_score < THRESHOLD:
 			continue
@@ -350,20 +354,16 @@ def avaliacao(model, lb, filename):
 	#cv2.imshow("After NMS", image)
 	plt.imshow(clone2)
 
-
 	clone_resized = cv2.resize(clone2, (800,800))
 
 
-	cv2.imwrite('saida.jpg', clone_resized, [cv2.IMWRITE_JPEG_QUALITY, 100])
-
-
-	plt.imshow(clone_resized)
+	show_image(clone_resized)
 
 
 #quit()
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
-THRESHOLD = 0.9
+THRESHOLD = 0.35
 
 # Limite acima do qual considera que as caixas sobrepostas são o mesmo objeto
 NMS_THRESHOLD = 0.15
