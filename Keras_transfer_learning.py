@@ -78,7 +78,7 @@ if COLLAB:
 	DATA_PATH="objetos-mesa"
 	get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
 else:
-	DATA_PATH="training-data/objetos-mesa"
+	DATA_PATH="input-data/objetos-mesa"
 
 
 #Inicializa os vetores que vão ser usados no treinamento
