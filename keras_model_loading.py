@@ -54,8 +54,6 @@ def max_prob_label(proba, labels):
       max_label = label_i
   return [max_prob, max_label]
 
-
-
 #Código original dessa função por Coutinho
 # https://github.com/lucas-coutinho/
 def NMS(B, S, L, Nt, soft=False):
@@ -121,9 +119,6 @@ def IOU(boxA, boxB):
   iou = interArea / float(boxAArea + boxBArea - interArea)
   # return the intersection over union value
   return iou
-     
-
-
 
 def avaliacao(model, lb, filename):
 	test_img = load_img(DATA_INPUT_PATH + os.path.sep + test_filename + '.jpg', target_size=INPUT_DIMS)
@@ -370,24 +365,67 @@ def avaliacao(model, lb, filename):
 
 	return resultados
 
+def dict_from_xml(test_filename):
+	annotFilename = DATA_INPUT_PATH + os.path.sep + test_filename + ".xml"
+	contents = open(annotFilename).read()
+	soup = BeautifulSoup(contents, "html.parser")
 
-#quit()
+	result_dict = {}
+
+	# loop over all 'object' elements
+	for o in soup.find_all("object"):
+		# extract the label
+		label = o.find("name").string
+		if result_dict.get(label):
+			result_dict[label] = result_dict[label] + 1
+		else:
+			result_dict[label] = 1
+
+	return result_dict
+
+def calculate_score(predict_results, xml_labels):
+	true_positives = 0
+	for key in predict_results.keys():
+		if xml_labels.get(key):
+			if xml_labels[key] <= predict_results[key]:
+				true_positives += xml_labels[key]
+				predict_results[key] -= xml_labels[key]
+				del xml_labels[key]
+				if predict_results[key] == 0:
+					del predict_results[key]
+			else:
+				true_positives += predict_results[key]
+				xml_labels[key] -= predict_results[key]
+				del predict_results[key]
+
+	false_positives = 0
+	for key in predict_results.keys():
+		false_positives += predict_results[key]
+
+	undetecteds = 0
+	for key in xml_labels.keys():
+		undetecteds += xml_labels[key]
+
+	if DEBUG:
+		print("Xml labels", xml_labels)
+		print("predição", predict_results)
+		print("Positivos verdadeiros", true_positives)
+		print("Falsos positivos", false_positives)
+		print("Não detectados", undetecteds)
+
+	return true_positives, false_positives, undetecteds
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
 THRESHOLD = 0.35
-
 # Limite acima do qual considera que as caixas sobrepostas são o mesmo objeto
 NMS_THRESHOLD = 0.15
-
 #Número de classes
 NRCLASSES = 15
-
 #Dimensões da imagem que deve ser passada para a rede
 INPUT_DIMS = (224, 224)
 # define the minimum probability required for a positive prediction
 # (used to filter out false-positive predictions)
 MIN_PROBA = 0.99
-
 #Variáveis para o treimanento
 #Learning rate, qtdade de épocas e batch size
 INIT_LR = 1e-4
@@ -395,7 +433,6 @@ EPOCHS = 100
 BS = 16
 
 MAX_PROPOSALS_INFER = 20
-
 # Prefixo do arquivo do modelo
 PREFIX = "object_detector.h52021-08-19"
 #PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
@@ -403,8 +440,6 @@ PREFIX = "object_detector.h52021-08-19"
 #True para rodar no collab
 COLLAB=False
 DEBUG=True
-
-#quit()
 
 # Se está usando o collab então monta o drive
 if COLLAB:
@@ -551,60 +586,12 @@ if DEBUG:
 test_filename = 'IMG_20201024_195842'
 #predict_resuls = avaliacao(model, lb, test_filename)
 
-def dict_from_xml(test_filename):
-	annotFilename = DATA_INPUT_PATH + os.path.sep + test_filename + ".xml"
-	contents = open(annotFilename).read()
-	soup = BeautifulSoup(contents, "html.parser")
-
-	result_dict = {}
-
-	# loop over all 'object' elements
-	for o in soup.find_all("object"):
-		# extract the label
-		label = o.find("name").string
-		if result_dict.get(label):
-			result_dict[label] = result_dict[label] + 1
-		else:
-			result_dict[label] = 1
-
-	return result_dict
 
 #xml_labels = dict_from_xml(test_filename)
 #print(xml_labels)
 
-predict_results = {'sucoempo': 2, 'pao': 3, 'banana': 3, 'fosforo': 2}
-xml_labels      = {'feijao': 1, 'cha': 1, 'detergente': 1, 'pao': 1, 'leite': 1, 'oleo': 1, 'agua': 1, 'caixachocolate': 1, 'maionese': 1}
-
-def calculate_score(predict_results, xml_labels):
-	true_positives = 0
-	for key in predict_results.keys():
-		if xml_labels.get(key):
-			if xml_labels[key] <= predict_results[key]:
-				true_positives += xml_labels[key]
-				predict_results[key] -= xml_labels[key]
-				del xml_labels[key]
-				if predict_results[key] == 0:
-					del predict_results[key]
-			else:
-				true_positives += predict_results[key]
-				xml_labels[key] -= predict_results[key]
-				del predict_results[key]
-
-	false_positives = 0
-	for key in predict_results.keys():
-		false_positives += predict_results[key]
-
-	undetecteds = 0
-	for key in xml_labels.keys():
-		undetecteds += xml_labels[key]
-
-	return true_positives, false_positives, undetecteds
+#predict_results = {'sucoempo': 2, 'pao': 3, 'banana': 3, 'fosforo': 2}
+#xml_labels      = {'feijao': 1, 'cha': 1, 'detergente': 1, 'pao': 1, 'leite': 1, 'oleo': 1, 'agua': 1, 'caixachocolate': 1, 'maionese': 1}
 
 true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-
-print("Xml labels", xml_labels)
-print("predição", predict_results)
-print("Positivos verdadeiros", true_positives)
-print("Falsos positivos", false_positives)
-print("Não detectados", undetecteds)
 print("General Score: ", true_positives-false_positives-undetecteds)
