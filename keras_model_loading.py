@@ -330,6 +330,8 @@ def avaliacao(model, lb, filename):
 
 	# In[ ]:
 
+    # Salva um resumo dos resultados para comparar
+	resultados = {}
 
 	clone2 = image.copy()
 	#selected_boxes = non_max_suppression_slow(boxes, 0.8)
@@ -338,7 +340,7 @@ def avaliacao(model, lb, filename):
 		#print(tmp_box, tmp_score)
 		#continue
 		# draw the bounding box, label, and probability on the image
-		print("Print score", tmp_score)
+		#print("Print score", tmp_score)
 		(startX, startY, endX, endY) = tmp_box
 		if tmp_score < THRESHOLD:
 			continue
@@ -347,6 +349,13 @@ def avaliacao(model, lb, filename):
 			(0, 255, 0), 1)
 		y = startY - 10 if startY - 10 > 10 else startY + 10
 		text= tmp_label + " {:.0f}%".format(tmp_score * 100)
+
+		# Salva uma contagem resumida dos resultados
+		if resultados.get(tmp_label):
+			resultados[tmp_label] = resultados[tmp_label] + 1
+		else:
+			resultados[tmp_label] = 1
+
 		print(text)
 		cv2.putText(clone2, text, (startX, y),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
@@ -358,6 +367,8 @@ def avaliacao(model, lb, filename):
 
 
 	show_image(clone_resized)
+
+	return resultados
 
 
 #quit()
@@ -538,4 +549,62 @@ if DEBUG:
 	print(type(lb))
 
 test_filename = 'IMG_20201024_195842'
-resultado = avaliacao(model, lb, test_filename)
+#predict_resuls = avaliacao(model, lb, test_filename)
+
+def dict_from_xml(test_filename):
+	annotFilename = DATA_INPUT_PATH + os.path.sep + test_filename + ".xml"
+	contents = open(annotFilename).read()
+	soup = BeautifulSoup(contents, "html.parser")
+
+	result_dict = {}
+
+	# loop over all 'object' elements
+	for o in soup.find_all("object"):
+		# extract the label
+		label = o.find("name").string
+		if result_dict.get(label):
+			result_dict[label] = result_dict[label] + 1
+		else:
+			result_dict[label] = 1
+
+	return result_dict
+
+#xml_labels = dict_from_xml(test_filename)
+#print(xml_labels)
+
+predict_results = {'sucoempo': 2, 'pao': 3, 'banana': 3, 'fosforo': 2}
+xml_labels      = {'feijao': 1, 'cha': 1, 'detergente': 1, 'pao': 1, 'leite': 1, 'oleo': 1, 'agua': 1, 'caixachocolate': 1, 'maionese': 1}
+
+def calculate_score(predict_results, xml_labels):
+	true_positives = 0
+	for key in predict_results.keys():
+		if xml_labels.get(key):
+			if xml_labels[key] <= predict_results[key]:
+				true_positives += xml_labels[key]
+				predict_results[key] -= xml_labels[key]
+				del xml_labels[key]
+				if predict_results[key] == 0:
+					del predict_results[key]
+			else:
+				true_positives += predict_results[key]
+				xml_labels[key] -= predict_results[key]
+				del predict_results[key]
+
+	false_positives = 0
+	for key in predict_results.keys():
+		false_positives += predict_results[key]
+
+	undetecteds = 0
+	for key in xml_labels.keys():
+		undetecteds += xml_labels[key]
+
+	return true_positives, false_positives, undetecteds
+
+true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+
+print("Xml labels", xml_labels)
+print("predição", predict_results)
+print("Positivos verdadeiros", true_positives)
+print("Falsos positivos", false_positives)
+print("Não detectados", undetecteds)
+print("General Score: ", true_positives-false_positives-undetecteds)
