@@ -538,5 +538,4 @@ if DEBUG:
 	print(type(lb))
 
 test_filename = 'IMG_20201024_195842'
-
 resultado = avaliacao(model, lb, test_filename)
