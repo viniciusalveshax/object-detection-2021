@@ -120,8 +120,8 @@ def IOU(boxA, boxB):
   # return the intersection over union value
   return iou
 
-def avaliacao(model, lb, filename):
-	test_img = load_img(DATA_INPUT_PATH + os.path.sep + test_filename + '.jpg', target_size=INPUT_DIMS)
+def avaliacao(model, lb, filename, interactive):
+	test_img = load_img(DATA_INPUT_PATH + os.path.sep + filename + '.jpg', target_size=INPUT_DIMS)
 
 	# Gera um vetor de entradas no qual será realizada a predição
 	test_img = img_to_array(test_img)
@@ -201,16 +201,17 @@ def avaliacao(model, lb, filename):
 		rects[0]
 		type(rects)
 		#Mostra  a imagem original
-		plt.imshow(image)
+		if interactive:
+			plt.imshow(image)
 
 		#Pega um dos retângulos candidatos e mostra como ficou essa parte da imagem
 		# O tamanho máximo de i é dado na célula acima --> rects.shape
-		i = 200
-		[x,y,w,h]=rects[i]
-		roi = image[y:y + h, x:x + w]
+		#i = 200
+		#[x,y,w,h]=rects[i]
+		#roi = image[y:y + h, x:x + w]
 		#roi = cv2.cvtColor(roi, cv2.COLOR_BGR2RGB)
-		roi = cv2.resize(roi, INPUT_DIMS,	interpolation=cv2.INTER_CUBIC)
-		plt.imshow(roi)
+		#roi = cv2.resize(roi, INPUT_DIMS,	interpolation=cv2.INTER_CUBIC)
+		#plt.imshow(roi)
 
 
 	# initialize the list of region proposals that we'll be classifying
@@ -247,9 +248,11 @@ def avaliacao(model, lb, filename):
 
 	proposals_np = np.array(proposals, dtype="float32")
 	boxes = np.array(boxes, dtype="int32")
-	print("[INFO] proposal shape: {}".format(proposals_np.shape))
+
+	if DEBUG:
+		print("[INFO] proposal shape: {}".format(proposals_np.shape))
+		print("[INFO] classifying proposals...")
 	# classify each of the proposal ROIs using fine-tuned model
-	print("[INFO] classifying proposals...")
 	proba = model.predict(proposals_np)
 
 
@@ -258,7 +261,8 @@ def avaliacao(model, lb, filename):
 
 	if DEBUG:
 		i=1
-		plt.imshow(proposals[i])
+		if interactive:
+			plt.imshow(proposals[i])
 		[tmp_prob, tmp_label] = max_prob_label(proba[i], lb.classes_)
 		[tmp_prob, tmp_label]
 
@@ -299,13 +303,16 @@ def avaliacao(model, lb, filename):
 		#text="teste"
 		[tmp_prob, tmp_label] = max_prob_label(prob, lb.classes_)
 		text = tmp_label
-		print("Prob: ", tmp_prob, ", Label: ", tmp_label)
+
+		if DEBUG:
+			print("Prob: ", tmp_prob, ", Label: ", tmp_label)
 		#print(tmp_prob)
 		if (tmp_prob > THRESHOLD and area < 500):
-		  print("index: ", i, ", prob: ", tmp_prob, ", label: ", tmp_label, ", area: ", area)
-		  cv2.rectangle(clone, (startX, startY), (endX, endY),
+			if DEBUG:
+				print("index: ", i, ", prob: ", tmp_prob, ", label: ", tmp_label, ", area: ", area)
+			cv2.rectangle(clone, (startX, startY), (endX, endY),
 			(0, 255, 0), 2)
-		  cv2.putText(clone, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
+			cv2.putText(clone, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
 
 	#clone = img_to_array(clone)
 	#clone = preprocess_input(clone)
@@ -313,14 +320,15 @@ def avaliacao(model, lb, filename):
 
 	# show the output before running NMS
 	#imshow(clone)
-	plt.imshow(clone)
+	if interactive:
+		plt.imshow(clone)
 
 
 	selected_boxes, selected_scores, selected_labels = NMS(boxes, scores, labels, NMS_THRESHOLD)
 
-
-	print("Length selected_boxes")
-	print(len(selected_boxes))
+	if DEBUG:
+		print("Length selected_boxes")
+		print(len(selected_boxes))
 
 
 	# In[ ]:
@@ -339,7 +347,8 @@ def avaliacao(model, lb, filename):
 		(startX, startY, endX, endY) = tmp_box
 		if tmp_score < THRESHOLD:
 			continue
-		print("Mais um retângulo")
+		if DEBUG:
+			print("Mais um retângulo")
 		cv2.rectangle(clone2, (startX, startY), (endX, endY),
 			(0, 255, 0), 1)
 		y = startY - 10 if startY - 10 > 10 else startY + 10
@@ -351,17 +360,20 @@ def avaliacao(model, lb, filename):
 		else:
 			resultados[tmp_label] = 1
 
-		print(text)
+		if DEBUG:
+			print(text)
 		cv2.putText(clone2, text, (startX, y),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
 	# show the output image *after* running NMS
 	#cv2.imshow("After NMS", image)
-	plt.imshow(clone2)
+
+	if interactive:
+		plt.imshow(clone2)
 
 	clone_resized = cv2.resize(clone2, (800,800))
 
-
-	show_image(clone_resized)
+	if interactive:
+		show_image(clone_resized)
 
 	return resultados
 
@@ -391,12 +403,13 @@ def calculate_score(predict_results, xml_labels):
 				true_positives += xml_labels[key]
 				predict_results[key] -= xml_labels[key]
 				del xml_labels[key]
-				if predict_results[key] == 0:
-					del predict_results[key]
+				#if predict_results[key] == 0:
+				#	del predict_results[key]
 			else:
 				true_positives += predict_results[key]
 				xml_labels[key] -= predict_results[key]
-				del predict_results[key]
+				predict_results[key] = 0
+				#del predict_results[key]
 
 	false_positives = 0
 	for key in predict_results.keys():
@@ -439,7 +452,7 @@ PREFIX = "object_detector.h52021-08-19"
 
 #True para rodar no collab
 COLLAB=False
-DEBUG=True
+DEBUG=False
 
 # Se está usando o collab então monta o drive
 if COLLAB:
@@ -451,9 +464,9 @@ else:
 	DATA_INPUT_PATH="input-data/objetos-mesa"
 	DATA_MODEL_PATH="model-data/"
 
-LOAD_ALL_IMAGE=False
+LOAD_ALL_IMAGES=False
 
-if LOAD_ALL_IMAGE == True:
+if LOAD_ALL_IMAGES == True:
 	#Inicializa os vetores que vão ser usados no treinamento
 	data = []
 	labels = []
@@ -566,32 +579,53 @@ if LOAD_ALL_IMAGE == True:
 
 #print(PREFIX+"modelo")
 
-#quit()
-
 # # Carrega o modelo
-# 
 # Essa parte e a seguinte podem ser separadas em um programa a parte quando for usado em produção e/ou uma competição.
 # Como o treinamento está sendo feito logo acima não existe realmente necessidade de carregar o modelo.
-
-# Execute a célula abaixo se quiser carregar um modelo antigo
-
 model = load_model(DATA_MODEL_PATH + os.path.sep + PREFIX + "modelo")
 lb = pickle.loads(open(DATA_MODEL_PATH + os.path.sep + PREFIX + "encoder", "rb").read())
-
-#quit()
 
 if DEBUG:
 	print(type(lb))
 
-test_filename = 'IMG_20201024_195842'
-#predict_resuls = avaliacao(model, lb, test_filename)
+LOAD_ALL_IMAGES=True
 
+if LOAD_ALL_IMAGES == False:
 
-#xml_labels = dict_from_xml(test_filename)
-#print(xml_labels)
+	#Arquivo que será testado
+	test_filename = 'IMG_20201024_195842'
+	#Resumo do resultado armazenado em um dicionário
+	predict_results = avaliacao(model, lb, test_filename, interactive=True)
+	#Rótulos do arquivo xml originais
+	xml_labels = dict_from_xml(test_filename)
+	true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+	print("General Score: ", true_positives-false_positives-undetecteds)
 
-#predict_results = {'sucoempo': 2, 'pao': 3, 'banana': 3, 'fosforo': 2}
-#xml_labels      = {'feijao': 1, 'cha': 1, 'detergente': 1, 'pao': 1, 'leite': 1, 'oleo': 1, 'agua': 1, 'caixachocolate': 1, 'maionese': 1}
+else:
 
-true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-print("General Score: ", true_positives-false_positives-undetecteds)
+	#Inicializa os vetores que vão ser usados no treinamento
+	data = []
+	labels = []
+	image_count = 0
+	sum_score = 0
+
+	#Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
+	f = open(DATA_INPUT_PATH + os.path.sep + 'index.txt')
+	for linha in f:
+		#Tira o \n no final de cada linha
+		linha = linha[:-1]
+		print("[INFO] processing image ", linha)
+		# extract the filename from the file path and use it to derive
+		# the path to the XML annotation file
+
+		# Resumo do resultado armazenado em um dicionário
+		predict_results = avaliacao(model, lb, linha, interactive=False)
+		# Rótulos do arquivo xml originais
+		xml_labels = dict_from_xml(linha)
+		true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+		score = true_positives - false_positives - undetecteds
+		print("[INFO] General Score: ", score)
+
+		sum_score += score
+
+	print("nr imagens: ", f.count(), " score acumulado: ", sum_score)
