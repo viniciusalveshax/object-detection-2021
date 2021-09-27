@@ -57,7 +57,7 @@ MIN_PROBA = 0.99
 #Variáveis para o treimanento
 #Learning rate, qtdade de épocas e batch size
 INIT_LR = 1e-4
-EPOCHS = 10
+EPOCHS = 100
 BS = 16
 
 MAX_PROPOSALS_INFER = 20
