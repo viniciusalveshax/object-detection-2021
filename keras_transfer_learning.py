@@ -46,7 +46,7 @@ THRESHOLD = 0.9
 NMS_THRESHOLD = 0.15
 
 #Número de classes
-NRCLASSES = 15
+NRCLASSES = 20
 
 #Dimensões da imagem que deve ser passada para a rede
 INPUT_DIMS = (224, 224)
@@ -78,7 +78,7 @@ if COLLAB:
 	DATA_PATH="objetos-mesa"
 	get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
 else:
-	DATA_PATH="input-data/objetos-mesa"
+	DATA_PATH="input-data/dataset-treinamento-2020"
 
 
 #Inicializa os vetores que vão ser usados no treinamento
