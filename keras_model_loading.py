@@ -120,12 +120,51 @@ def IOU(boxA, boxB):
   # return the intersection over union value
   return iou
 
+
+def color_from_label(label):
+	COLOR_FROM_LABEL = {'Alcohol bottle': (0,0,0),
+						'Apple': (50,0,0),
+						'Banana': (100,0,0),
+						'Beer can': (150,0,0),
+						'Carrot': (200,0,0),
+						'Chocolate milk': (255,0,0),
+						'Chocolate': (0,50,0),
+						'Chocolate Powder': (0,100,0),
+						'Coconut milk': (0,150,0),
+						'Cracker': (0,200,0),
+						'Gelatine': (0,255,0),
+						'Grape juice': (0,0,50),
+						'Ketchup': (0,0,100),
+						'Mayonnaise': (0,0,150),
+						'Napkin': (0,0,200),
+						'Popcorn': (0,0,255),
+						'Soap': (50,50,50),
+						'Soda can': (100,100,100),
+						'Toothpaste': (150,150,150),
+						'Yeast': (200,200,200)}
+
+	color = COLOR_FROM_LABEL[label]
+
+	return color
+
 def avaliacao(model, lb, filename, interactive):
 	test_img = load_img(DATA_INPUT_PATH + os.path.sep + filename + '.jpg', target_size=INPUT_DIMS)
+
+	#test_img = cv2.imread(DATA_INPUT_PATH + os.path.sep + filename + '.jpg', cv2.COLOR_BGR2RGB)
 
 	# Gera um vetor de entradas no qual será realizada a predição
 	test_img = img_to_array(test_img)
 	test_img = preprocess_input(test_img)
+
+	original_size_img = load_img(DATA_INPUT_PATH + os.path.sep + filename + '.jpg', target_size=(1000, 1000))
+	original_size_img = img_to_array(original_size_img)
+	original_size_img = preprocess_input(original_size_img)
+	print("ORIGINAL_SIZE: ", original_size_img.shape)
+	orig_size_X, orig_size_Y, orig_size_colors = original_size_img.shape
+	#orig_size_X = original_size_img[0]
+	#orig_size_Y = original_size_img[1]
+	print("origx:", orig_size_X, " origy:", orig_size_Y)
+
 	input_test = []
 
 	# TODO o ideal é preencher o vetor de entrada com porções da imagem
@@ -323,7 +362,7 @@ def avaliacao(model, lb, filename, interactive):
 	if interactive:
 		plt.imshow(clone)
 
-
+	#Aplica o algoritmo de NMS para remover bounding boxes redundantes
 	selected_boxes, selected_scores, selected_labels = NMS(boxes, scores, labels, NMS_THRESHOLD)
 
 	if DEBUG:
@@ -342,17 +381,31 @@ def avaliacao(model, lb, filename, interactive):
 	for tmp_box, tmp_score, tmp_label in zip(selected_boxes, selected_scores, selected_labels):
 		#print(tmp_box, tmp_score)
 		#continue
+
+		bb_color = color_from_label(tmp_label)
+
 		# draw the bounding box, label, and probability on the image
 		#print("Print score", tmp_score)
 		(startX, startY, endX, endY) = tmp_box
 		if tmp_score < THRESHOLD:
 			continue
 		if DEBUG:
-			print("Mais um retângulo")
+			#print("Mais um retângulo")
+			print("Orig size x:", orig_size_X, " y:", orig_size_Y)
+			print("Retângulo x: ", startX, "-", endX, "; y: ", startY, "-", endY)
+			startX_orig_size = (round) ((startX / 224) * orig_size_X)
+			endX_orig_size   = (round) ((endX / 224) * orig_size_X)
+			startY_orig_size = (round) ((startY / 224) * orig_size_Y)
+			endY_orig_size   = (round) ((endY / 224) * orig_size_Y)
+			print("Novo Retângulo x: ", startX_orig_size, "-", endX_orig_size, "; y: ", startY_orig_size, "-", endY_orig_size)
+
 		cv2.rectangle(clone2, (startX, startY), (endX, endY),
-			(0, 255, 0), 1)
+			bb_color, 1)
+		cv2.rectangle(original_size_img, (startX_orig_size, startY_orig_size), (endX_orig_size, endY_orig_size),
+					  bb_color, 10)
+
 		y = startY - 10 if startY - 10 > 10 else startY + 10
-		text= tmp_label + " {:.0f}%".format(tmp_score * 100)
+		text = tmp_label + " {:.0f}%".format(tmp_score * 100)
 
 		# Salva uma contagem resumida dos resultados
 		if resultados.get(tmp_label):
@@ -363,17 +416,26 @@ def avaliacao(model, lb, filename, interactive):
 		if DEBUG:
 			print(text)
 		cv2.putText(clone2, text, (startX, y),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)
+			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 1)
+		cv2.putText(original_size_img, text, (startX_orig_size, startY_orig_size),
+			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 5)
 	# show the output image *after* running NMS
 	#cv2.imshow("After NMS", image)
 
-	if interactive:
-		plt.imshow(clone2)
-
 	clone_resized = cv2.resize(clone2, (800,800))
+	#original_size_img_resized = cv2.resize(original_size_img, (800,800))
+
+	original_size_rgb = cv2.cvtColor(original_size_img, cv2.COLOR_BGR2RGB)
 
 	if interactive:
 		show_image(clone_resized)
+		show_image(original_size_rgb)
+
+#	cv2.imshow('ImageWindow', original_size_img)
+#	cv2.waitKey()
+
+	# imwrite precisa receber valores entre 0 e 255 e os valores até o momento estão entre 0 e 1
+	cv2.imwrite(filename+'.jpg', 255*original_size_rgb)
 
 	return resultados
 
@@ -428,12 +490,15 @@ def calculate_score(predict_results, xml_labels):
 
 	return true_positives, false_positives, undetecteds
 
+
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
-THRESHOLD = 0.35
+THRESHOLD = 0.90
+
 # Limite acima do qual considera que as caixas sobrepostas são o mesmo objeto
-NMS_THRESHOLD = 0.15
+# Quanto menor esse valor menos a tolerância, logo menos sobreposições
+NMS_THRESHOLD = 0.2
 #Número de classes
-NRCLASSES = 15
+NRCLASSES = 20
 #Dimensões da imagem que deve ser passada para a rede
 INPUT_DIMS = (224, 224)
 # define the minimum probability required for a positive prediction
@@ -447,12 +512,14 @@ BS = 16
 
 MAX_PROPOSALS_INFER = 20
 # Prefixo do arquivo do modelo
-PREFIX = "object_detector.h52021-08-19"
+PREFIX = "object_detector.h52021-09-29"
 #PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
 
 #True para rodar no collab
 COLLAB=False
-DEBUG=False
+
+#Debug mostra ou não variáveis intermediárias
+DEBUG=True
 
 # Se está usando o collab então monta o drive
 if COLLAB:
@@ -461,7 +528,7 @@ if COLLAB:
 	drive.mount("/content/gdrive", force_remount=True)
 	get_ipython().system("ln -s gdrive/'My Drive'/'Object Detection Dataset'/'objetos-mesa' .")
 else:
-	DATA_INPUT_PATH="input-data/objetos-mesa"
+	DATA_INPUT_PATH="input-data/imagens-competicao-2020/"
 	DATA_MODEL_PATH="model-data/"
 
 LOAD_ALL_IMAGES=False
@@ -588,18 +655,28 @@ lb = pickle.loads(open(DATA_MODEL_PATH + os.path.sep + PREFIX + "encoder", "rb")
 if DEBUG:
 	print(type(lb))
 
-LOAD_ALL_IMAGES=True
+LOAD_ALL_IMAGES=False
 
 if LOAD_ALL_IMAGES == False:
 
+	IMAGE_HAVE_XML=False
+
 	#Arquivo que será testado
-	test_filename = 'IMG_20201024_195842'
-	#Resumo do resultado armazenado em um dicionário
+	test_filename = 'normal_7'
+
+
+
+	#Resumo do resultado fica armazenado em um dicionário
 	predict_results = avaliacao(model, lb, test_filename, interactive=True)
-	#Rótulos do arquivo xml originais
-	xml_labels = dict_from_xml(test_filename)
-	true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-	print("General Score: ", true_positives-false_positives-undetecteds)
+
+	#Se a imagem possui um arquivo de anotações
+	if IMAGE_HAVE_XML:
+		#Rótulos do arquivo xml originais
+		xml_labels = dict_from_xml(test_filename)
+		true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+		print("General Score: ", true_positives-false_positives-undetecteds)
+	else:
+		print(predict_results)
 
 else:
 
