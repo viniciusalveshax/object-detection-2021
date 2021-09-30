@@ -435,7 +435,7 @@ def avaliacao(model, lb, filename, interactive):
 #	cv2.waitKey()
 
 	# imwrite precisa receber valores entre 0 e 255 e os valores até o momento estão entre 0 e 1
-	cv2.imwrite(filename+'.jpg', 255*original_size_rgb)
+	cv2.imwrite('output-data'+os.path.sep+filename+'.jpg', 255*original_size_rgb)
 
 	return resultados
 
@@ -662,21 +662,23 @@ if LOAD_ALL_IMAGES == False:
 	IMAGE_HAVE_XML=False
 
 	#Arquivo que será testado
-	test_filename = 'normal_7'
+	filenames = ['bonus_13','normal_6', 'normal_7', 'normal_13', 'normal_22', 'normal_26', 'normal_31']
 
+	for test_filename in filenames:
 
+		print("Gerando resultado para ",test_filename)
 
-	#Resumo do resultado fica armazenado em um dicionário
-	predict_results = avaliacao(model, lb, test_filename, interactive=True)
+		#Resumo do resultado fica armazenado em um dicionário
+		predict_results = avaliacao(model, lb, test_filename, interactive=True)
 
-	#Se a imagem possui um arquivo de anotações
-	if IMAGE_HAVE_XML:
-		#Rótulos do arquivo xml originais
-		xml_labels = dict_from_xml(test_filename)
-		true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-		print("General Score: ", true_positives-false_positives-undetecteds)
-	else:
-		print(predict_results)
+		#Se a imagem possui um arquivo de anotações
+		if IMAGE_HAVE_XML:
+			#Rótulos do arquivo xml originais
+			xml_labels = dict_from_xml(test_filename)
+			true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+			print("General Score: ", true_positives-false_positives-undetecteds)
+		else:
+			print(predict_results)
 
 else:
 
