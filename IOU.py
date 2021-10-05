@@ -1,10 +1,35 @@
+def inside(boxA, boxB):
+  x1A, y1A, x2A, y2A = boxA
+  x1B, y1B, x2B, y2B = boxB
+
+  if (x1A <= x1B) and (y1A <= y1B) and (x2A >= x2B) and (y2A >= y2B):
+    return True
+  else:
+    return False
+
 #Código original dessa função por Coutinho
 # https://github.com/lucas-coutinho/
 def IOU(boxA, boxB):
 	# determine the (x, y)-coordinates of the intersection rectangle
   # boxA= (boxA[0],boxA[1], boxA[0] + width, boxA[1] + height)
   # boxB= (boxB[0],boxB[1], boxB[0] + width, boxB[1] + height)
-  print("A: ", boxA, " B: ", boxB)
+  print("IOU: Comparando A: ", boxA, " com B: ", boxB)
+
+  iou = 0
+
+  if inside(boxA, boxB):
+    print("B está dentro de A")
+    #IOU é máximo então retorna 1
+    iou=1.0
+  else:
+    if inside(boxB, boxA):
+      print("A está dentro de B")
+      iou=1.0
+
+  if iou == 1.0:
+    print("iou: ", iou)
+    return iou
+
   xA = max(boxA[0], boxB[0])
   yA = max(boxA[1], boxB[1])
   xB = min(boxA[2], boxB[2])
@@ -22,3 +47,4 @@ def IOU(boxA, boxB):
   print("iou: ", iou)
   # return the intersection over union value
   return iou
+

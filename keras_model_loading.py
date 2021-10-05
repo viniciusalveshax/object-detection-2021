@@ -37,6 +37,7 @@ import argparse
 import pickle
 import os
 from datetime import datetime
+from IOU import IOU
 
 def show_image(image):
 	cv2.imshow('ImageWindow', image)
@@ -56,8 +57,9 @@ def max_prob_label(proba, labels):
 
 #Código original dessa função por Coutinho
 # https://github.com/lucas-coutinho/
+# params B = bounding boxes, S = scores, L = labels, Nt = NMS_THRESHOLD
 def NMS(B, S, L, Nt, soft=False):
-  D  = []
+  Bd  = []
   Sd = []
   Ld = []
 
@@ -65,60 +67,65 @@ def NMS(B, S, L, Nt, soft=False):
   S = list(S)
   L = list(L)
 
+  #Enquanto a lista de bboxes não for vazia ... do
   while len(B) != 0:
-    #B_S = list(zip(B, S))
+
+    if DEBUG:
+      print("Tamanho de B", len(B))
+      print("Tamanho de S", len(S))
+
+
+	  #B_S = list(zip(B, S))
+	#Pega o índice do maior score
     max_index = S.index(max(S))
-    m = S[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][1]
-    M = B[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][0]
-    l = L[max_index]
-    D.append(M)
+    print("max_index: ", max_index)
+    max_score = S[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][1]
+    max_bbox = B[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][0]
+    max_label = L[max_index]
+
+    print("Selecionando M:", max_bbox)
+
+	# Seleciona a bbox dada por max_index e salva na lista das bboxes que vão continuar
+    Bd.append(max_bbox)
     B.pop(max_index)
-    Sd.append(m)
+    Sd.append(max_score)
     S.pop(max_index)
-    Ld.append(l)
+    Ld.append(max_label)
     L.pop(max_index)
+
     index = -1
-    for b in B:
-      #index = B.index(b)
-      if len(B) == 0:
-        break;
-      index = index + 1
-      #print("index=",index)
-      #print("M=",M)
-      #print("b=",b)
+
+
+    if DEBUG:
+      print("Tamanho de B após remover M", len(B))
+      print("Tamanho de S após remover M", len(S))
+
+
+    print("B=", B)
+
+    #comparasions=0
+    #B_copy = B.copy()
+    novo_B = []
+    novo_S = []
+    novo_L = []
+
+	# Para cada bbox ainda não selecionada ... faz
+	#while(len(B) != 0):
+    for tmpbbox,tmps,tmpl in zip(B,S,L):
+
       if soft:
-        S[index] -= IOU(M['box'],b)['box']
+        S[index] -= IOU(max_bbox['box'],tmpbbox)['box']
       else:
-        #if IOU(M['box'],b['box']) > Nt:
-        if IOU(M, b) > Nt:
-          B.pop(index)
-          S.pop(index)
-          L.pop(index)
+        if IOU(max_bbox, tmpbbox) < Nt:
+          novo_B.append(tmpbbox)
+          novo_S.append(tmps)
+          novo_L.append(tmpl)
 
-  return D, Sd, Ld
+    B = novo_B
+    S = novo_S
+    L = novo_L
 
-#Código original dessa função por Coutinho
-# https://github.com/lucas-coutinho/
-def IOU(boxA, boxB):
-	# determine the (x, y)-coordinates of the intersection rectangle
-  # boxA= (boxA[0],boxA[1], boxA[0] + width, boxA[1] + height)
-  # boxB= (boxB[0],boxB[1], boxB[0] + width, boxB[1] + height)
-  xA = max(boxA[0], boxB[0])
-  yA = max(boxA[1], boxB[1])
-  xB = min(boxA[2], boxB[2])
-  yB = min(boxA[3], boxB[3])
-  # compute the area of intersection rectangle
-  interArea = max(0, xB - xA + 1) * max(0, yB - yA + 1)
-  # compute the area of both the prediction and ground-truth
-  # rectangles
-  boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
-  boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
-  # compute the intersection over union by taking the intersection
-  # area and dividing it by the sum of prediction + ground-truth
-  # areas - the interesection area
-  iou = interArea / float(boxAArea + boxBArea - interArea)
-  # return the intersection over union value
-  return iou
+  return Bd, Sd, Ld
 
 
 def color_from_label(label):
@@ -376,7 +383,9 @@ def avaliacao(model, lb, filename, interactive):
 	resultados = {}
 
 	clone2 = image.copy()
-	#selected_boxes = non_max_suppression_slow(boxes, 0.8)
+
+	rectangle_index = 0
+
 	# loop over the bounding box indexes
 	for tmp_box, tmp_score, tmp_label in zip(selected_boxes, selected_scores, selected_labels):
 		#print(tmp_box, tmp_score)
@@ -387,17 +396,24 @@ def avaliacao(model, lb, filename, interactive):
 		# draw the bounding box, label, and probability on the image
 		#print("Print score", tmp_score)
 		(startX, startY, endX, endY) = tmp_box
+
+		# descobre os valores para o tamanho da imagem original
+		startX_orig_size = (round)((startX / 224) * orig_size_X)
+		endX_orig_size = (round)((endX / 224) * orig_size_X)
+		startY_orig_size = (round)((startY / 224) * orig_size_Y)
+		endY_orig_size = (round)((endY / 224) * orig_size_Y)
+
 		if tmp_score < THRESHOLD:
 			continue
 		if DEBUG:
 			#print("Mais um retângulo")
+			print("-----------------")
+			print("index: ", rectangle_index)
+			rectangle_index = rectangle_index + 1
 			print("Orig size x:", orig_size_X, " y:", orig_size_Y)
 			print("Retângulo x: ", startX, "-", endX, "; y: ", startY, "-", endY)
-			startX_orig_size = (round) ((startX / 224) * orig_size_X)
-			endX_orig_size   = (round) ((endX / 224) * orig_size_X)
-			startY_orig_size = (round) ((startY / 224) * orig_size_Y)
-			endY_orig_size   = (round) ((endY / 224) * orig_size_Y)
 			print("Novo Retângulo x: ", startX_orig_size, "-", endX_orig_size, "; y: ", startY_orig_size, "-", endY_orig_size)
+			print("-----------------")
 
 		cv2.rectangle(clone2, (startX, startY), (endX, endY),
 			bb_color, 1)
@@ -419,6 +435,11 @@ def avaliacao(model, lb, filename, interactive):
 			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 1)
 		cv2.putText(original_size_img, text, (startX_orig_size, startY_orig_size),
 			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 5)
+
+		if DEBUG:
+			#Mostra a imagem a medida que os retângulos forem sendo adicionados
+			show_image(clone2)
+
 	# show the output image *after* running NMS
 	#cv2.imshow("After NMS", image)
 
@@ -519,7 +540,7 @@ PREFIX = "object_detector.h52021-09-29"
 COLLAB=False
 
 #Debug mostra ou não variáveis intermediárias
-DEBUG=True
+DEBUG=False
 
 # Se está usando o collab então monta o drive
 if COLLAB:
@@ -667,6 +688,9 @@ if LOAD_ALL_IMAGES == False:
 	for test_filename in filenames:
 
 		print("Gerando resultado para ",test_filename)
+
+		#Modificando o nms
+		#avaliacao(model, lb, test_filename, interactive=True)
 
 		#Resumo do resultado fica armazenado em um dicionário
 		predict_results = avaliacao(model, lb, test_filename, interactive=True)
