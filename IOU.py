@@ -9,25 +9,29 @@ def inside(boxA, boxB):
 
 #Código original dessa função por Coutinho
 # https://github.com/lucas-coutinho/
-def IOU(boxA, boxB):
+def IOU(boxA, boxB, debug=False):
 	# determine the (x, y)-coordinates of the intersection rectangle
   # boxA= (boxA[0],boxA[1], boxA[0] + width, boxA[1] + height)
   # boxB= (boxB[0],boxB[1], boxB[0] + width, boxB[1] + height)
-  print("IOU: Comparando A: ", boxA, " com B: ", boxB)
+  if debug:
+    print("IOU: Comparando A: ", boxA, " com B: ", boxB)
 
   iou = 0
 
   if inside(boxA, boxB):
-    print("B está dentro de A")
+    if debug:
+      print("B está dentro de A")
     #IOU é máximo então retorna 1
     iou=1.0
   else:
     if inside(boxB, boxA):
-      print("A está dentro de B")
+      if debug:
+        print("A está dentro de B")
       iou=1.0
 
   if iou == 1.0:
-    print("iou: ", iou)
+    if debug:
+      print("iou: ", iou)
     return iou
 
   xA = max(boxA[0], boxB[0])
@@ -44,7 +48,8 @@ def IOU(boxA, boxB):
   # area and dividing it by the sum of prediction + ground-truth
   # areas - the interesection area
   iou = interArea / float(boxAArea + boxBArea - interArea)
-  print("iou: ", iou)
+  if debug:
+    print("iou: ", iou)
   # return the intersection over union value
   return iou
 

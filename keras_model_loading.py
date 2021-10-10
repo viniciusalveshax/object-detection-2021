@@ -75,15 +75,17 @@ def NMS(B, S, L, Nt, soft=False):
       print("Tamanho de S", len(S))
 
 
-	  #B_S = list(zip(B, S))
+    #B_S = list(zip(B, S))
 	#Pega o índice do maior score
     max_index = S.index(max(S))
-    print("max_index: ", max_index)
+    if DEBUG:
+      print("max_index: ", max_index)
     max_score = S[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][1]
     max_bbox = B[max_index] #sorted(B_S, key= lambda x: x[1],reverse=True)[0][0]
     max_label = L[max_index]
 
-    print("Selecionando M:", max_bbox)
+    if DEBUG:
+      print("Selecionando M:", max_bbox)
 
 	# Seleciona a bbox dada por max_index e salva na lista das bboxes que vão continuar
     Bd.append(max_bbox)
@@ -99,9 +101,7 @@ def NMS(B, S, L, Nt, soft=False):
     if DEBUG:
       print("Tamanho de B após remover M", len(B))
       print("Tamanho de S após remover M", len(S))
-
-
-    print("B=", B)
+      print("B=", B)
 
     #comparasions=0
     #B_copy = B.copy()
@@ -166,11 +166,13 @@ def avaliacao(model, lb, filename, interactive):
 	original_size_img = load_img(DATA_INPUT_PATH + os.path.sep + filename + '.jpg', target_size=(1000, 1000))
 	original_size_img = img_to_array(original_size_img)
 	original_size_img = preprocess_input(original_size_img)
-	print("ORIGINAL_SIZE: ", original_size_img.shape)
 	orig_size_X, orig_size_Y, orig_size_colors = original_size_img.shape
 	#orig_size_X = original_size_img[0]
 	#orig_size_Y = original_size_img[1]
-	print("origx:", orig_size_X, " origy:", orig_size_Y)
+
+	if DEBUG:
+		print("ORIGINAL_SIZE: ", original_size_img.shape)
+		print("origx:", orig_size_X, " origy:", orig_size_Y)
 
 	input_test = []
 
@@ -444,17 +446,19 @@ def avaliacao(model, lb, filename, interactive):
 	#cv2.imshow("After NMS", image)
 
 	clone_resized = cv2.resize(clone2, (800,800))
-	#original_size_img_resized = cv2.resize(original_size_img, (800,800))
+	original_size_img_resized = cv2.resize(original_size_img, (600,600))
 
-	original_size_rgb = cv2.cvtColor(original_size_img, cv2.COLOR_BGR2RGB)
+	original_size_rgb = cv2.cvtColor(original_size_img_resized, cv2.COLOR_BGR2RGB)
 
 	if interactive:
-		show_image(clone_resized)
+		if DEBUG:
+		    show_image(clone_resized)
 		show_image(original_size_rgb)
 
 #	cv2.imshow('ImageWindow', original_size_img)
 #	cv2.waitKey()
 
+	print("Salvando resultado em: ", 'output-data'+os.path.sep+filename+'.jpg')
 	# imwrite precisa receber valores entre 0 e 255 e os valores até o momento estão entre 0 e 1
 	cv2.imwrite('output-data'+os.path.sep+filename+'.jpg', 255*original_size_rgb)
 
@@ -513,11 +517,11 @@ def calculate_score(predict_results, xml_labels):
 
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
-THRESHOLD = 0.90
+THRESHOLD = 0.80
 
 # Limite acima do qual considera que as caixas sobrepostas são o mesmo objeto
 # Quanto menor esse valor menos a tolerância, logo menos sobreposições
-NMS_THRESHOLD = 0.2
+NMS_THRESHOLD = 0.15
 #Número de classes
 NRCLASSES = 20
 #Dimensões da imagem que deve ser passada para a rede
@@ -667,68 +671,97 @@ if LOAD_ALL_IMAGES == True:
 
 #print(PREFIX+"modelo")
 
+print("Tentando carregar o modelo ", DATA_MODEL_PATH+os.path.sep+PREFIX+"modelo")
+
 # # Carrega o modelo
 # Essa parte e a seguinte podem ser separadas em um programa a parte quando for usado em produção e/ou uma competição.
 # Como o treinamento está sendo feito logo acima não existe realmente necessidade de carregar o modelo.
 model = load_model(DATA_MODEL_PATH + os.path.sep + PREFIX + "modelo")
 lb = pickle.loads(open(DATA_MODEL_PATH + os.path.sep + PREFIX + "encoder", "rb").read())
 
+print("Modelo carregado.")
+print("Digite uma opção")
+print("1 - Executar interativamente para testes")
+print("2 - Executar de maneira não interativa para testes")
+print("3 - Competição")
+print("4 - Sair")
+opcao = input()
+
 if DEBUG:
 	print(type(lb))
 
-LOAD_ALL_IMAGES=False
+if (opcao == '1'):
 
-if LOAD_ALL_IMAGES == False:
+	if LOAD_ALL_IMAGES == False:
 
-	IMAGE_HAVE_XML=False
+		IMAGE_HAVE_XML=False
 
-	#Arquivo que será testado
-	filenames = ['bonus_13','normal_6', 'normal_7', 'normal_13', 'normal_22', 'normal_26', 'normal_31']
+		#Arquivo que será testado
+		filenames = ['bonus_13','normal_6', 'normal_7', 'normal_13', 'normal_22', 'normal_26', 'normal_31']
 
-	for test_filename in filenames:
+		for test_filename in filenames:
 
-		print("Gerando resultado para ",test_filename)
+			print("Gerando resultado para ",test_filename)
 
-		#Modificando o nms
-		#avaliacao(model, lb, test_filename, interactive=True)
+			#Modificando o nms
+			#avaliacao(model, lb, test_filename, interactive=True)
 
-		#Resumo do resultado fica armazenado em um dicionário
-		predict_results = avaliacao(model, lb, test_filename, interactive=True)
+			#Resumo do resultado fica armazenado em um dicionário
+			predict_results = avaliacao(model, lb, test_filename, interactive=True)
 
-		#Se a imagem possui um arquivo de anotações
-		if IMAGE_HAVE_XML:
-			#Rótulos do arquivo xml originais
-			xml_labels = dict_from_xml(test_filename)
-			true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-			print("General Score: ", true_positives-false_positives-undetecteds)
-		else:
-			print(predict_results)
+			#Se a imagem possui um arquivo de anotações
+			if IMAGE_HAVE_XML:
+				#Rótulos do arquivo xml originais
+				xml_labels = dict_from_xml(test_filename)
+				true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+				print("General Score: ", true_positives-false_positives-undetecteds)
+			else:
+				print(predict_results)
 
 else:
 
-	#Inicializa os vetores que vão ser usados no treinamento
-	data = []
-	labels = []
-	image_count = 0
-	sum_score = 0
+	if (opcao == '2'):
 
-	#Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
-	f = open(DATA_INPUT_PATH + os.path.sep + 'index.txt')
-	for linha in f:
-		#Tira o \n no final de cada linha
-		linha = linha[:-1]
-		print("[INFO] processing image ", linha)
-		# extract the filename from the file path and use it to derive
-		# the path to the XML annotation file
+		#Inicializa os vetores que vão ser usados no treinamento
+		data = []
+		labels = []
+		image_count = 0
+		sum_score = 0
 
-		# Resumo do resultado armazenado em um dicionário
-		predict_results = avaliacao(model, lb, linha, interactive=False)
-		# Rótulos do arquivo xml originais
-		xml_labels = dict_from_xml(linha)
-		true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
-		score = true_positives - false_positives - undetecteds
-		print("[INFO] General Score: ", score)
+		#Lê o arquivo index.txt que tem os prefixos das imagens e das anotações
+		f = open(DATA_INPUT_PATH + os.path.sep + 'index.txt')
+		for linha in f:
+			#Tira o \n no final de cada linha
+			linha = linha[:-1]
+			print("\n[INFO] processando imagem ", linha)
+			# extract the filename from the file path and use it to derive
+			# the path to the XML annotation file
 
-		sum_score += score
+			# Resumo do resultado armazenado em um dicionário
+			predict_results = avaliacao(model, lb, linha, interactive=False)
+			# Rótulos do arquivo xml originais
+			xml_labels = dict_from_xml(linha)
+			true_positives, false_positives, undetecteds = calculate_score(predict_results, xml_labels)
+			score = true_positives - false_positives - undetecteds
+			print("[INFO] General Score: ", score)
 
-	print("nr imagens: ", f.count(), " score acumulado: ", sum_score)
+			sum_score += score
+			image_count += 1
+
+		print("\nnr imagens: ", image_count, " score acumulado: ", sum_score)
+
+	else:
+
+		if (opcao == '3'):
+			DEBUG=False
+			DATA_INPUT_PATH = "input-data/imagens-competicao-2021/"
+			#filename = "teste"
+			while (True):
+				print("\nDigite a imagem na qual os objetos serão detectados. Digite 4 para sair.")
+				filename = input()
+				if (filename == "4"):
+					break
+				print("Tentando ler arquivo ", DATA_INPUT_PATH+filename+".jpg")
+				avaliacao(model, lb, filename, interactive=True)
+
+print("\nEncerrando o programa")
