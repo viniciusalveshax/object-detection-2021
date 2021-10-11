@@ -453,7 +453,7 @@ def avaliacao(model, lb, filename, interactive):
 		if (resultados[tmp_label] > 2):
 			continue
 
-		if (tmp_label == "Chocolate"):
+		if (tmp_label == "Chocolate") or (tmp_label == "Grape juice"):
 			continue
 
 		#print("\nResultados ", resultados[tmp_label])
@@ -489,6 +489,7 @@ def avaliacao(model, lb, filename, interactive):
 					  bb_color, 5)
 
 		y = startY - 10 if startY - 10 > 10 else startY + 10
+		new_y = startY_orig_size - 10 if startY_orig_size - 10 > 10 else startY_orig_size + 10
 		text = "Obj" + str(rectangle_index) + ' ' + tmp_label + " {:.0f}%".format(tmp_score * 100)
 		#text = tmp_label + " {:.0f}%".format(tmp_area)
 
@@ -499,7 +500,7 @@ def avaliacao(model, lb, filename, interactive):
 			print(text)
 		cv2.putText(clone2, text, (startX, y),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 2)
-		cv2.putText(original_size_img, text, (startX_orig_size, startY_orig_size),
+		cv2.putText(original_size_img, text, (startX_orig_size, new_y),
 			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 2)
 
 		if DEBUG:
