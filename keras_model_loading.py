@@ -300,6 +300,7 @@ def avaliacao(model, lb, filename, interactive):
 	if DEBUG:
 		print("[INFO] proposal shape: {}".format(proposals_np.shape))
 		print("[INFO] classifying proposals...")
+
 	# classify each of the proposal ROIs using fine-tuned model
 	proba = model.predict(proposals_np)
 
@@ -311,6 +312,7 @@ def avaliacao(model, lb, filename, interactive):
 		i=1
 		if interactive:
 			plt.imshow(proposals[i])
+		# Teste da função max_prob_label
 		[tmp_prob, tmp_label] = max_prob_label(proba[i], lb.classes_)
 		[tmp_prob, tmp_label]
 
@@ -323,6 +325,8 @@ def avaliacao(model, lb, filename, interactive):
 
 	scores = []
 	labels = []
+
+	#Pra cada uma das propostas calcula o rótulo mais provável
 	for prob_i in proba:
 	  [tmp_prob, tmp_label] = max_prob_label(prob_i, lb.classes_)
 	  scores.append(tmp_prob)
@@ -338,8 +342,11 @@ def avaliacao(model, lb, filename, interactive):
 	# clone the original image so that we can draw on it
 	clone = image.copy()
 	i = 0
+	detected_objects = 0
+
 	# loop over the bounding boxes and associated probabilities
 	for (box, prob) in zip(boxes, proba):
+
 		# draw the bounding box, label, and probability on the image
 		(startX, startY, endX, endY) = box
 		i = i + 1
@@ -354,6 +361,7 @@ def avaliacao(model, lb, filename, interactive):
 
 		if DEBUG:
 			print("Prob: ", tmp_prob, ", Label: ", tmp_label)
+
 		#print(tmp_prob)
 		if (tmp_prob > THRESHOLD and area < 500):
 			if DEBUG:
@@ -361,6 +369,8 @@ def avaliacao(model, lb, filename, interactive):
 			cv2.rectangle(clone, (startX, startY), (endX, endY),
 			(0, 255, 0), 2)
 			cv2.putText(clone, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
+			detected_objects += 1
+
 
 	#clone = img_to_array(clone)
 	#clone = preprocess_input(clone)
@@ -393,11 +403,41 @@ def avaliacao(model, lb, filename, interactive):
 		#print(tmp_box, tmp_score)
 		#continue
 
-		bb_color = color_from_label(tmp_label)
+		# Se o score for muito pequeno não faz nada
+		if tmp_score < THRESHOLD:
+			continue
 
 		# draw the bounding box, label, and probability on the image
-		#print("Print score", tmp_score)
+		# print("Print score", tmp_score)
 		(startX, startY, endX, endY) = tmp_box
+
+		tmp_area = (endX - startX) * (endY - startY)
+		print("area ", tmp_area)
+
+		# Se a área da bbox for muito pequena ou muito grande
+		# possivelmente é um falso positivo
+		if (tmp_area < 700) or (tmp_area > 5000):
+			continue
+
+		if (resultados.get(tmp_label)):
+			resultados[tmp_label] = resultados[tmp_label] + 1
+		else:
+			resultados[tmp_label] = 1
+
+		if (resultados[tmp_label] > 2):
+			continue
+
+		if (tmp_label == "Chocolate"):
+			continue
+
+		print("\nResultados ", resultados[tmp_label])
+
+
+		#if rectangle_index > MAX_PROPOSALS_INFER:
+		#	break
+
+		bb_color = color_from_label(tmp_label)
+
 
 		# descobre os valores para o tamanho da imagem original
 		startX_orig_size = (round)((startX / 224) * orig_size_X)
@@ -405,38 +445,34 @@ def avaliacao(model, lb, filename, interactive):
 		startY_orig_size = (round)((startY / 224) * orig_size_Y)
 		endY_orig_size = (round)((endY / 224) * orig_size_Y)
 
-		if tmp_score < THRESHOLD:
-			continue
+
 		if DEBUG:
 			#print("Mais um retângulo")
 			print("-----------------")
 			print("index: ", rectangle_index)
-			rectangle_index = rectangle_index + 1
 			print("Orig size x:", orig_size_X, " y:", orig_size_Y)
 			print("Retângulo x: ", startX, "-", endX, "; y: ", startY, "-", endY)
 			print("Novo Retângulo x: ", startX_orig_size, "-", endX_orig_size, "; y: ", startY_orig_size, "-", endY_orig_size)
 			print("-----------------")
 
+		rectangle_index = rectangle_index + 1
+
 		cv2.rectangle(clone2, (startX, startY), (endX, endY),
 			bb_color, 1)
 		cv2.rectangle(original_size_img, (startX_orig_size, startY_orig_size), (endX_orig_size, endY_orig_size),
-					  bb_color, 10)
+					  bb_color, 5)
 
 		y = startY - 10 if startY - 10 > 10 else startY + 10
 		text = tmp_label + " {:.0f}%".format(tmp_score * 100)
-
-		# Salva uma contagem resumida dos resultados
-		if resultados.get(tmp_label):
-			resultados[tmp_label] = resultados[tmp_label] + 1
-		else:
-			resultados[tmp_label] = 1
+		#text = tmp_label + " {:.0f}%".format(tmp_area)
+		print(text)
 
 		if DEBUG:
 			print(text)
 		cv2.putText(clone2, text, (startX, y),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 1)
 		cv2.putText(original_size_img, text, (startX_orig_size, startY_orig_size),
-			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 5)
+			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 1)
 
 		if DEBUG:
 			#Mostra a imagem a medida que os retângulos forem sendo adicionados
@@ -517,11 +553,11 @@ def calculate_score(predict_results, xml_labels):
 
 
 #Limite das probabilidades - se for menor então considera que o objeto não está na imagem
-THRESHOLD = 0.80
+THRESHOLD = 0.72
 
 # Limite acima do qual considera que as caixas sobrepostas são o mesmo objeto
 # Quanto menor esse valor menos a tolerância, logo menos sobreposições
-NMS_THRESHOLD = 0.15
+NMS_THRESHOLD = 0.10
 #Número de classes
 NRCLASSES = 20
 #Dimensões da imagem que deve ser passada para a rede
@@ -535,7 +571,7 @@ INIT_LR = 1e-4
 EPOCHS = 100
 BS = 16
 
-MAX_PROPOSALS_INFER = 20
+MAX_PROPOSALS_INFER = 7
 # Prefixo do arquivo do modelo
 PREFIX = "object_detector.h52021-09-29"
 #PREFIX = PREFIX + datetime.today().strftime('%Y-%m-%d')
