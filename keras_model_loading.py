@@ -127,6 +127,32 @@ def NMS(B, S, L, Nt, soft=False):
 
   return Bd, Sd, Ld
 
+def class_from_label(label):
+	CLASS_FROM_LABEL = {'Alcohol bottle': 'Hygiene Product',
+						'Apple': 'Organics',
+						'Banana': 'Organics',
+						'Beer can': 'Drinks',
+						'Carrot': 'Organics',
+						'Chocolate milk': 'Drinks',
+						'Chocolate': 'Groceries',
+						'Chocolate Powder': 'Derivative',
+						'Coconut milk': 'Derivative',
+						'Cracker': 'Groceries',
+						'Gelatine': 'Groceries',
+						'Grape juice': 'Drinks',
+						'Ketchup': 'Condiments',
+						'Mayonnaise': 'Condiments',
+						'Napkin': 'Hygiene Product',
+						'Popcorn': 'Groceries',
+						'Soap': 'Hygiene Product',
+						'Soda can': 'Drinks',
+						'Toothpaste': 'Hygiene Product',
+						'Yeast': 'Derivative'}
+
+	klass = CLASS_FROM_LABEL[label]
+
+	return klass
+
 
 def color_from_label(label):
 	COLOR_FROM_LABEL = {'Alcohol bottle': (0,0,0),
@@ -412,7 +438,7 @@ def avaliacao(model, lb, filename, interactive):
 		(startX, startY, endX, endY) = tmp_box
 
 		tmp_area = (endX - startX) * (endY - startY)
-		print("area ", tmp_area)
+		#print("area ", tmp_area)
 
 		# Se a área da bbox for muito pequena ou muito grande
 		# possivelmente é um falso positivo
@@ -430,14 +456,14 @@ def avaliacao(model, lb, filename, interactive):
 		if (tmp_label == "Chocolate"):
 			continue
 
-		print("\nResultados ", resultados[tmp_label])
+		#print("\nResultados ", resultados[tmp_label])
 
 
 		#if rectangle_index > MAX_PROPOSALS_INFER:
 		#	break
 
 		bb_color = color_from_label(tmp_label)
-
+		klass    = class_from_label(tmp_label)
 
 		# descobre os valores para o tamanho da imagem original
 		startX_orig_size = (round)((startX / 224) * orig_size_X)
@@ -463,16 +489,18 @@ def avaliacao(model, lb, filename, interactive):
 					  bb_color, 5)
 
 		y = startY - 10 if startY - 10 > 10 else startY + 10
-		text = tmp_label + " {:.0f}%".format(tmp_score * 100)
+		text = "Obj" + str(rectangle_index) + ' ' + tmp_label + " {:.0f}%".format(tmp_score * 100)
 		#text = tmp_label + " {:.0f}%".format(tmp_area)
-		print(text)
+
+		print('\n'+text)
+		print("Class: ", klass)
 
 		if DEBUG:
 			print(text)
 		cv2.putText(clone2, text, (startX, y),
-			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 1)
+			cv2.FONT_HERSHEY_SIMPLEX, 0.3, bb_color, 2)
 		cv2.putText(original_size_img, text, (startX_orig_size, startY_orig_size),
-			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 1)
+			cv2.FONT_HERSHEY_SIMPLEX, 1, bb_color, 2)
 
 		if DEBUG:
 			#Mostra a imagem a medida que os retângulos forem sendo adicionados
